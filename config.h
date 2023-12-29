@@ -48,9 +48,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     #define RGBLIGHT_VAL_STEP 17
 #endif
 
-#define OLED_ENABLE
-#define EXTRAKEY_ENABLE
-#define WPM_ENABLE
 
 #define OLED_UPDATE_INTERVAL 50
 #define SPLIT_WPM_ENABLE
