@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include QMK_KEYBOARD_H
 #include <stdio.h>
-#include "process_unicode_common.h"
 enum layers { _QWERTY = 0, _LOWER, _RAISE, _ADJUST, _MOUSE };
 
 // clang-format off
@@ -82,91 +81,43 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
 #ifdef OLED_ENABLE
 
-static void render_gui_alt(uint8_t const gui, uint8_t const alt) {
-    static char const gui_off_1[] PROGMEM = {0x85, 0x86, 0};
-    static char const gui_off_2[] PROGMEM = {0xa5, 0xa6, 0};
-    static char const gui_on_1[]  PROGMEM = {0x8d, 0x8e, 0};
-    static char const gui_on_2[]  PROGMEM = {0xad, 0xae, 0};
+char wpm_str[10];
 
-    static char const alt_off_1[] PROGMEM = {0x87, 0x88, 0};
-    static char const alt_off_2[] PROGMEM = {0xa7, 0xa8, 0};
-    static char const alt_on_1[]  PROGMEM = {0x8f, 0x90, 0};
-    static char const alt_on_2[]  PROGMEM = {0xaf, 0xb0, 0};
 
-    // Fillers between icon frames
-    static char const off_off_1[] PROGMEM = {0xc5, 0};
-    static char const off_off_2[] PROGMEM = {0xc6, 0};
-    static char const on_off_1[]  PROGMEM = {0xc7, 0};
-    static char const on_off_2[]  PROGMEM = {0xc8, 0};
-    static char const off_on_1[]  PROGMEM = {0xc9, 0};
-    static char const off_on_2[]  PROGMEM = {0xca, 0};
-    static char const on_on_1[]   PROGMEM = {0xcb, 0};
-    static char const on_on_2[]   PROGMEM = {0xcc, 0};
+static void render_mod_keys(uint8_t const modifiers, uint8_t const col, uint8_t const line) {
+    static const char PROGMEM mod_status[5][3] = {
+        {0x88, 0x89, 0},
+        {0x84, 0x85, 0},
+        {0x86, 0x87, 0},
+        {0x8A, 0x8B, 0},
+        {0x8C, 0x8D, 0}};
+    oled_set_cursor(col, line);
 
-    // Top half with in between fillers
-    oled_write_P(gui ? gui_on_1 : gui_off_1, false);
-    if (gui && alt) oled_write_P(on_on_1,   false);
-    else if (gui)   oled_write_P(on_off_1,  false);
-    else if (alt)   oled_write_P(off_on_1,  false);
-    else            oled_write_P(off_off_1, false);
-    oled_write_P(alt ? alt_on_1 : alt_off_1, false);
-
-    // Bottom half with in between fillers
-    oled_write_P(gui ? gui_on_2 : gui_off_2, false);
-    if (gui && alt) oled_write_P(on_on_2,   false);
-    else if (gui)   oled_write_P(on_off_2,  false);
-    else if (alt)   oled_write_P(off_on_2,  false);
-    else            oled_write_P(off_off_2, false);
-    oled_write_P(alt ? alt_on_2 : alt_off_2, false);
+    oled_write_P(mod_status[0], (modifiers & MOD_MASK_SHIFT));
+    oled_write_P(mod_status[!keymap_config.swap_lalt_lgui ? 3 : 4], (modifiers & MOD_MASK_GUI));
+    oled_write_P(PSTR(" "), false);
+    oled_write_P(mod_status[2], (modifiers & MOD_MASK_ALT));
+    oled_write_P(mod_status[1], (modifiers & MOD_MASK_CTRL));
 }
 
 
-static void render_ctrl_shift(uint8_t const ctrl, uint8_t const shift) {
-    static char const ctrl_off_1[] PROGMEM = {0x89, 0x8a, 0};
-    static char const ctrl_off_2[] PROGMEM = {0xa9, 0xaa, 0};
-    static char const ctrl_on_1[]  PROGMEM = {0x91, 0x92, 0};
-    static char const ctrl_on_2[]  PROGMEM = {0xb1, 0xb2, 0};
-
-    static char const shift_off_1[] PROGMEM = {0x8b, 0x8c, 0};
-    static char const shift_off_2[] PROGMEM = {0xab, 0xac, 0};
-    static char const shift_on_1[]  PROGMEM = {0xcd, 0xce, 0};
-    static char const shift_on_2[]  PROGMEM = {0xcf, 0xd0, 0};
-
-    // Fillers between icon frames
-    static char const off_off_1[] PROGMEM = {0xc5, 0};
-    static char const off_off_2[] PROGMEM = {0xc6, 0};
-    static char const on_off_1[]  PROGMEM = {0xc7, 0};
-    static char const on_off_2[]  PROGMEM = {0xc8, 0};
-    static char const off_on_1[]  PROGMEM = {0xc9, 0};
-    static char const off_on_2[]  PROGMEM = {0xca, 0};
-    static char const on_on_1[]   PROGMEM = {0xcb, 0};
-    static char const on_on_2[]   PROGMEM = {0xcc, 0};
-
-    // Top half with in between fillers
-    oled_write_P(ctrl ? ctrl_on_1 : ctrl_off_1, false);
-    if (ctrl && shift) oled_write_P(on_on_1,   false);
-    else if (ctrl)     oled_write_P(on_off_1,  false);
-    else if (shift)    oled_write_P(off_on_1,  false);
-    else               oled_write_P(off_off_1, false);
-    oled_write_P(shift ? shift_on_1 : shift_off_1, false);
-
-    // Bottom half with in between fillers
-    oled_write_P(ctrl ? ctrl_on_2 : ctrl_off_2, false);
-    if (ctrl && shift) oled_write_P(on_on_2,   false);
-    else if (ctrl)     oled_write_P(on_off_2,  false);
-    else if (shift)    oled_write_P(off_on_2,  false);
-    else               oled_write_P(off_off_2, false);
-    oled_write_P(shift ? shift_on_2 : shift_off_2, false);
-}
 
 void render_bootmagic_status(uint8_t col, uint8_t line) {
     /* Show Ctrl-Gui Swap options */
     oled_set_cursor(col, line);
 
+    static const char PROGMEM logo[][2][3] = {
+        {{0x97, 0x98, 0}, {0xAD, 0xAE, 0}},
+        {{0x95, 0x96, 0}, {0xAB, 0xAC, 0}},
+    };
     if (keymap_config.swap_lalt_lgui) {
-        oled_write_P(PSTR("OSX"), false);
+        oled_write_P(logo[1][0], false);
+        oled_set_cursor(col, line + 1);
+        oled_write_P(logo[1][1], false);
     } else {
-        oled_write_P(PSTR("WIN"), false);
+        oled_write_P(logo[0][0], false);
+        oled_set_cursor(col, line + 1);
+        oled_write_P(logo[0][1], false);
     }
 }
 
@@ -305,12 +256,6 @@ void render_layer_state(uint8_t col, uint8_t line) {
     oled_set_cursor(col, line + 2);
     oled_write_raw_P(tri_layer_image[layer_is[0]][2], sizeof(tri_layer_image[0][0]));
 
-    // oled_set_cursor(col, line + 3);
-    // oled_write_raw_P(tri_layer_image[layer_is[1]][0], sizeof(tri_layer_image[0][0]));
-    // oled_set_cursor(col, line + 4);
-    // oled_write_raw_P(tri_layer_image[layer_is[1]][1], sizeof(tri_layer_image[0][0]));
-    // oled_set_cursor(col, line + 5);
-    // oled_write_raw_P(tri_layer_image[layer_is[1]][2], sizeof(tri_layer_image[0][0]));
 }
 
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
@@ -330,27 +275,24 @@ void render_crkbd_logo(void) {
 void render_status_main(void) {
     /* Show Keyboard Layout  */
     uint8_t mods = get_mods();
-    render_bootmagic_status(0, 1);
-    render_layer_state(0, 4);
+    oled_set_cursor(1,0);
+    oled_write_P(PSTR(" "), false);
+    oled_write_ln(wpm_str, false);
+    render_bootmagic_status(2, 3);
+    render_layer_state(1, 6);
     // render_os();
 
-    oled_set_cursor(0,10);
-    render_gui_alt(mods & MOD_MASK_GUI, mods & MOD_MASK_ALT);
-    render_ctrl_shift(mods & MOD_MASK_CTRL, mods & MOD_MASK_SHIFT || host_keyboard_led_state().caps_lock);
+    render_mod_keys(mods, 1, 12);
 }
 
 bool oled_task_user(void) {
     if (is_keyboard_master()) {
+        sprintf(wpm_str, "%03d", get_current_wpm());
         render_status_main(); // Renders the current keyboard state (layer, lock, caps, scroll, etc)
     } else {
-        render_crkbd_logo();
+        // render_crkbd_logo();
     }
     return false;
 }
 
-bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    if (record->event.pressed) {
-    }
-    return true;
-}
 #endif

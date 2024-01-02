@@ -57,4 +57,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define UNICODEMAP_ENABLE
 #define UCIS_ENABLE
 #define UNICODE_SELECTED_MODES UNICODE_MODE_LINUX, UNICODE_MODE_WINCOMPOSE, UNICODE_MODE_MACOS
-#define OLED_FONT_H "./oledfont.c"
+#define OLED_FONT_ZXPIX
+#define OLED_FONT_H "./drashna_font.h"
